@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <title>Visão Subaquática do Drone Ambiental</title>
+    <style>
+        body {
+            background-color: #001f33;
+            color: white;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            flex-direction: row;
+            padding: 20px;
+        }
+        #canvas {
+            border: 1px solid #00334d;
+        }
+        #info {
+            margin-left: 20px;
+            background-color: #002b40;
+            padding: 10px;
+            width: 350px;
+            height: 600px;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
+    </style>
+</head>
+<body>
+<canvas id="canvas" width="600" height="600"></canvas>
+<div id="info"></div>
+
+<script>
+    const GRID_SIZE = 10;
+    const CELL_SIZE = 60;
+    const VISION_RANGE = 1;
+    const TEMPO_ENTRE_PASSOS = 800;
+
+    const COR_FUNDO = "#001f33";
+    const COR_VISIVEL = "#0099cc";
+    const COR_LIXO = "#555555";
+    const COR_DRONE = "#ff3333";
+
+    const canvas = document.getElementById("canvas");
+    const ctx = canvas.getContext("2d");
+    const info = document.getElementById("info");
+
+    let dronePos = [
+        Math.floor(Math.random() * GRID_SIZE),
+        Math.floor(Math.random() * GRID_SIZE)
+    ];
+
+    const oceano = Array.from({ length: GRID_SIZE }, () =>
+        Array.from({ length: GRID_SIZE }, () => ({
+            temperatura: +(Math.random() * 25 + 5).toFixed(1),
+            ph: +(Math.random() * 2 + 6.5).toFixed(2),
+            lixo: Math.random() < 0.25
+        }))
+    );
+
+    function desenhar() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        for (let i = 0; i < GRID_SIZE; i++) {
+            for (let j = 0; j < GRID_SIZE; j++) {
+                const x = j * CELL_SIZE;
+                const y = i * CELL_SIZE;
+
+                const dentroVisao = Math.abs(i - dronePos[0]) <= VISION_RANGE &&
+                                     Math.abs(j - dronePos[1]) <= VISION_RANGE;
+
+                let cor = COR_FUNDO;
+                if (dentroVisao) {
+                    cor = oceano[i][j].lixo ? COR_LIXO : COR_VISIVEL;
+                }
+
+                ctx.fillStyle = cor;
+                ctx.fillRect(x, y, CELL_SIZE, CELL_SIZE);
+                ctx.strokeStyle = "#00334d";
+                ctx.strokeRect(x, y, CELL_SIZE, CELL_SIZE);
+            }
+        }
+
+        // Desenhar o drone como ponto vermelho
+        const [dx, dy] = dronePos;
+        const cx = dy * CELL_SIZE + CELL_SIZE / 2;
+        const cy = dx * CELL_SIZE + CELL_SIZE / 2;
+        ctx.beginPath();
+        ctx.arc(cx, cy, 5, 0, 2 * Math.PI);
+        ctx.fillStyle = COR_DRONE;
+        ctx.fill();
+    }
+
+    function coletarDadosVisao() {
+        const dados = [];
+        const [x, y] = dronePos;
+        for (let dx = -VISION_RANGE; dx <= VISION_RANGE; dx++) {
+            for (let dy = -VISION_RANGE; dy <= VISION_RANGE; dy++) {
+                const nx = x + dx;
+                const ny = y + dy;
+                if (nx >= 0 && ny >= 0 && nx < GRID_SIZE && ny < GRID_SIZE) {
+                    dados.push({ x: nx, y: ny, ...oceano[nx][ny] });
+                }
+            }
+        }
+        return dados;
+    }
+
+    function mostrarDados(dados) {
+        let texto = `📍 Posição do Drone: (${dronePos[0]}, ${dronePos[1]})\n\n`;
+        texto += `🛍️ Dados coletados:\n`;
+        dados.forEach(ponto => {
+            texto += `• (${ponto.x},${ponto.y}) Temp: ${ponto.temperatura}°C, pH: ${ponto.ph}, Lixo: ${ponto.lixo ? 'Sim' : 'Não'}\n`;
+        });
+        info.textContent = texto;
+    }
+
+    function moverDrone() {
+        dronePos[0] = Math.max(0, Math.min(GRID_SIZE - 1, dronePos[0] + Math.floor(Math.random() * 3) - 1));
+        dronePos[1] = Math.max(0, Math.min(GRID_SIZE - 1, dronePos[1] + Math.floor(Math.random() * 3) - 1));
+
+        desenhar();
+        mostrarDados(coletarDadosVisao());
+    }
+
+    // Inicializar
+    desenhar();
+    mostrarDados(coletarDadosVisao());
+    setInterval(moverDrone, TEMPO_ENTRE_PASSOS);
+</script>
+</body>
+</html>
